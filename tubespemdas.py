@@ -5,18 +5,20 @@ import pandas as pd
 import re
 from datetime import datetime
 
-riwayat_transaksi = []
-connection = None
+riwayat_transaksi = [] #digunakan untuk menyimpan riwayat transaksi dalam bentuk list
+connection: mysql.connector.MySQLConnection | None = None #koneksi global ke database MySQL
 
+#perintah tampilkan
 def select(query_select, role):
     global connection
     cursor = connection.cursor()
     cursor.execute(query_select)
     result = cursor.fetchall()
     cursor.close()
-    tambahkan_ke_riwayat('Select', {'query': query_select}, role)
+    tambahkan_ke_riwayat('Select', {'query': query_select}, role) #untuk mencatat transaksi
     return result
 
+#untuk menambahkan data pada database
 def insert(query_insert, values, role):
     global connection
     cursor = connection.cursor()
@@ -25,6 +27,7 @@ def insert(query_insert, values, role):
     cursor.close()
     tambahkan_ke_riwayat('Insert', {'query': query_insert, 'values': values}, role)
 
+#untuk mengupdate data tertentu pada database
 def update(query_update, new_values, role):
     global connection
     cursor = connection.cursor()
@@ -33,6 +36,7 @@ def update(query_update, new_values, role):
     cursor.close()
     tambahkan_ke_riwayat('Update', {'query': query_update, 'new_values': new_values}, role)
 
+#untuk menghapus data dalam tabel database
 def delete(query_delete, values, role):
     global connection
     cursor = connection.cursor()
@@ -41,19 +45,10 @@ def delete(query_delete, values, role):
     cursor.close()
     tambahkan_ke_riwayat('Delete', {'query': query_delete, 'values': values}, role)
 
+
 def tambahkan_ke_riwayat(action, detail, role):
     riwayat_transaksi.append({'action': action, 'detail': detail, 'role': role})
 
-
-def tampilkan_riwayat_pembelian():
-    select_query = "SELECT * FROM booking"
-    result = select(select_query, 'admin')  # Menampilkan riwayat dari tabel admin
-
-    if result:
-        for row in result:
-            print(row)
-    else:
-        print("Tidak ada data untuk ditampilkan.")
 
 def tampilkan_riwayat_pembelian():
     select_query = "SELECT * FROM booking"
@@ -70,6 +65,26 @@ def tampilkan_riwayat_pembelian():
 
             print("{:<15}   {:<15}   {:<15}   {:<15}   {:<15}   {:<15}   {:<15}".format(
                 row[0], row[3], row[4], row[6], row[7], row[5], row[8]
+            ))
+    else:
+        print("Tidak ada data untuk ditampilkan.")
+
+
+def riwayat_pembelian_user(id_user, cursor):
+    select_query = f"SELECT * FROM booking where id_user = {id_user}"
+    result = select(select_query, 'user')
+
+    if result:
+        print("-" * 110)
+        print("{:<15} | {:<15} | {:<15} | {:<15} | {:<15} | {:<15}".format(
+            "ID Booking", "Cara Bayar", "Total Bayar", "NO Telp", "Nama Tamu", "NO Kamar"
+        ))
+        print("-" * 110)
+        for row in result:
+            row = tuple('-' if item is None else item for item in row)
+
+            print("{:<15}   {:<15}   {:<15}   {:<15}   {:<15}   {:<15}".format(
+                row[0], row[3], row[4], row[6], row[5], row[8]
             ))
     else:
         print("Tidak ada data untuk ditampilkan.")
@@ -94,13 +109,16 @@ def tampilkan_grafik_penjualan():
     else:
         print("Tidak ada data untuk ditampilkan.")
 
+
 def validate_password(password):
     # Minimal 8 karakter
     return len(password) >= 8
 
+
 def validate_username(username):
     # Username hanya boleh mengandung huruf, angka, dan underscore
     return re.match(r'^\w+$', username) is not None
+
 
 def registration(cursor, connection):
     while True:
@@ -119,6 +137,23 @@ def registration(cursor, connection):
 
         register_user(username, password, cursor, connection)
         break
+
+
+def tampilkan_pilihan_kamar(role):
+    rooms = select('SELECT * FROM rooms', role)
+
+    if rooms:
+        print("-" * 120)
+        print("{:<21} | {:<22} | {:<22} | {:<21} | {:<22}".format(
+            "ID Kamar", "Tipe", "Harga", "Lantai", "Ketersediaan"
+        ))
+        print("-" * 120)
+        for room in rooms:
+            room = tuple('-' if item is None else item for item in room)
+
+            print("{:<21} | {:<22} | {:<22} | {:<21} | {:<22}".format(*room))
+    else:
+        print("Tidak ada data untuk ditampilkan.")
 
 def booking_kamar(id_rooms, id_user, cursor):
     global connection  # Tambahkan variabel connection global
@@ -169,6 +204,7 @@ def booking_kamar(id_rooms, id_user, cursor):
     else:
         print("Kamar tidak tersedia atau ID Kamar tidak valid.")
 
+
 def connect_to_database():
     global connection  # Tambahkan variabel connection global
     db_config = {
@@ -186,12 +222,14 @@ def connect_to_database():
         print(f"Error: {err}")
         return None
 
+
 def close_connection(connection, cursor=None):
     if cursor:
         cursor.close()
     if connection.is_connected():
         connection.close()
         print("Connection closed")
+
 
 def create_users_table(cursor):
     create_table_query = '''
@@ -203,11 +241,13 @@ def create_users_table(cursor):
     '''
     cursor.execute(create_table_query)
 
+
 def register_user(username, password, cursor, connection):
     insert_query = "INSERT INTO users (username, password) VALUES (%s, %s)"
     cursor.execute(insert_query, (username, password))
     connection.commit()
     print("Registration successful!")
+
 
 def login_user(username, password, cursor):
     query_user = "SELECT * FROM users WHERE username = %s AND password = %s"
@@ -224,10 +264,11 @@ def login_user(username, password, cursor):
         admin = cursor.fetchone()
         if admin:
             print("Selamat datang, Admin")
-            return 'admin', None  
+            return 'admin', None
         else:
             print("Login failed. Invalid username or password.")
             return None
+
 
 def select_rooms(cursor):
     select_query = "SELECT * FROM rooms"
@@ -249,12 +290,14 @@ def select_rooms(cursor):
     else:
         print("Tidak ada data untuk ditampilkan.")
 
+
 def delete_room(cursor):
     id_rooms = input("Masukkan ID Kamar yang akan dihapus: ")
     delete_query = "DELETE FROM rooms WHERE id_rooms = %s"
     cursor.execute(delete_query, (id_rooms,))
     connection.commit()
     print("Data kamar berhasil dihapus.")
+
 
 def update_room(cursor):
     id_rooms = input("Masukkan ID Kamar yang akan diupdate: ")
@@ -287,7 +330,11 @@ def main():
             create_users_table(cursor)
 
             while True:
-                print("=== Menu ===")
+                print('''
+                                        "==========================================="
+                                        "|           WELCOME TO HOTELA             |"
+                                        "==========================================="
+                ''')
                 print("1. Login")
                 print("2. Register")
                 print("3. Exit")
@@ -307,30 +354,28 @@ def main():
 
                     if role:
                         while True:
-                            if role =='admin':
+                            print('''
+                                    "==========================================="
+                                    "|        WELCOME TO HOTELA MENU           |"
+                                    "==========================================="
+                                  ''')
+                            if role == 'admin':
+                                print("1. Lihat Pilihan Kamar")
+                                print("2. Booking Kamar")
+                                print("3. Riwayat Transaksi")
+                                print("4. Lihat Grafik Penjualan")
+                                print("5. Tambah Data Kamar")
+                                print("6. Update Data Kamar")
+                                print("7. Hapus Data Kamar")
+                                print("8. Logout")
+                            else:
+                                print("1. Lihat Pilihan Kamar")
+                                print("2. Booking Kamar")
+                                print("3. Riwayat Transaksi")
+                                print("4. Logout")
 
-                                print('''
-                                        "==========================================="
-                                        "|        WELCOME TO HOTELA MENU           |"
-                                        "==========================================="
-                                      ''')
-                                if role == 'admin':
-                                    print("1. Lihat Pilihan Kamar")
-                                    print("2. Booking Kamar")
-                                    print("3. Riwayat Transaksi")
-                                    print("4. Lihat Grafik Penjualan")
-                                    print("5. Tambah Data Kamar")
-                                    print("6. Update Data Kamar")
-                                    print("7. Hapus Data Kamar")
-                                    print("8. Logout")
-                                else:
-                                    print("1. Lihat Pilihan Kamar")
-                                    print("2. Booking Kamar")
-                                    print("3. Riwayat Transaksi")
-                                    print("4. Logout")
-
-                                submenu_choice = input("Masukkan pilihan Anda: ")
-                                print()
+                            submenu_choice = input("Masukkan pilihan Anda: ")
+                            print()
 
                             if role == 'admin':
                                 if submenu_choice == '1':
@@ -355,24 +400,22 @@ def main():
                                     delete_room(cursor)
                                     print()
                                 elif submenu_choice == '8':
-                                    login_user(username, password, cursor)
+                                    break
                                 else:
                                     print("Pilihan tidak valid. Silakan pilih antara 1-8.")
                             else:
                                 if submenu_choice == '1':
-                                    select_query = "SELECT * FROM rooms"
-                                    result = select(select_query, role)
-                                    print(result)
+                                    tampilkan_pilihan_kamar(role)
                                     print()
                                 elif submenu_choice == '2':
                                     id_rooms = input("Masukkan NO Kamar yang akan dibooking: ")
                                     booking_kamar(id_rooms, id_user, cursor)
                                     print()
                                 elif submenu_choice == '3':
-                                    tampilkan_riwayat_pembelian_user(id_user, cursor)
+                                    riwayat_pembelian_user(id_user, cursor)
                                     print()
                                 elif submenu_choice == '4':
-                                    role, id_user = login_user(username, password, cursor)
+                                    break
                                 else:
                                     print("Pilihan tidak valid. Silakan pilih antara 1-4.")
 
@@ -402,6 +445,7 @@ def main():
 
         finally:
             close_connection(connection, cursor)
+
 
 if __name__ == "__main__":
     main()
