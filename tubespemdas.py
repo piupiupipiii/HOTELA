@@ -278,7 +278,7 @@ def select_rooms(cursor):
     if result:
         print("-" * 100)
         print("{:<15} | {:<15} | {:<15} | {:<15} | {:<15}".format(
-            "ID Booking", "NO Kamar", "Type Kamar", "Harga", "Lantai", "Status Kamar"
+            "NO Kamar", "Type Kamar", "Harga", "Lantai", "Status Kamar"
         ))
         print("-" * 100)
         for row in result:
